@@ -63,8 +63,8 @@
 		</dependency>
 
 		<dependency>
-		     <groupId>com.nzb.netty3</groupId>
-		     <artifactId>common</artifactId>
+			<groupId>com.nzb.netty3</groupId>
+			<artifactId>common</artifactId>
 		</dependency>
 	</dependencies>
 </project>
