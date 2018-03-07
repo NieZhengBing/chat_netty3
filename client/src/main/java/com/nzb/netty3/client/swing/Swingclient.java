@@ -6,6 +6,7 @@ import java.awt.HeadlessException;
 import java.awt.Toolkit;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
+import java.awt.event.WindowEvent;
 
 import javax.swing.JButton;
 import javax.swing.JFrame;
@@ -16,9 +17,18 @@ import javax.swing.JTextField;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
+import org.springframework.util.StringUtils;
 
 import com.nzb.netty3.client.Client;
 import com.nzb.netty3.client.swing.constant.ButtonCommand;
+import com.nzb.netty3.common.core.model.Request;
+import com.nzb.netty3.common.module.ModuleId;
+import com.nzb.netty3.common.module.chat.ChatCmd;
+import com.nzb.netty3.common.module.chat.request.PrivateChatRequest;
+import com.nzb.netty3.common.module.chat.request.PublicChatRequest;
+import com.nzb.netty3.common.module.player.PlayerCmd;
+import com.nzb.netty3.common.module.player.request.LoginRequest;
+import com.nzb.netty3.common.module.player.request.RegisterRequest;
 import com.nzb.netty3.common.module.player.response.PlayerResponse;
 
 @Component
@@ -138,12 +148,94 @@ public class Swingclient extends JFrame implements ActionListener {
 	}
 
 	public void actionPerformed(ActionEvent e) {
-		switch(e.getActionCommand()) {
+		switch (e.getActionCommand()) {
 		case ButtonCommand.LOGIN:
 			try {
-				
+				LoginRequest loginRequest = new LoginRequest();
+				loginRequest.setPlayerName(playerName.getText());
+				loginRequest.setPassword(password.getText());
+
+				Request request = Request.valueOf(ModuleId.PLAYER, PlayerCmd.LOGIN, loginRequest.getBytes());
+				client.sendRequest(request);
+			} catch (InterruptedException e1) {
+				// TODO Auto-generated catch block
+				e1.printStackTrace();
 			}
+			break;
+		case ButtonCommand.REGISTER:
+			try {
+				RegisterRequest registerRequest = new RegisterRequest();
+				registerRequest.setPlayerName(playerName.getText());
+				registerRequest.setPassword(password.getText());
+				Request request = Request.valueOf(ModuleId.PLAYER, PlayerCmd.REGISTER_AND_LOGIN,
+						registerRequest.getBytes());
+				client.sendRequest(request);
+			} catch (InterruptedException e1) {
+				e1.printStackTrace();
+			}
+			break;
+		case ButtonCommand.SEND:
+			try {
+				if (StringUtils.isEmpty(targetPlayer.getText()) && !StringUtils.isEmpty(message.getText())) {
+					PublicChatRequest publicChatRequest = new PublicChatRequest();
+					publicChatRequest.setContext(message.getText());
+
+					Request request = Request.valueOf(ModuleId.CHAT, ChatCmd.PUBLIC_CHAT, publicChatRequest.getBytes());
+					client.sendRequest(request);
+				} else {
+					if (StringUtils.isEmpty(message.getText())) {
+						tips.setText("message is not empty");
+						return;
+					}
+					long playerId = 0;
+					try {
+						playerId = Long.parseLong(targetPlayer.getText());
+					} catch (NumberFormatException ex) {
+						tips.setText("player id must be number");
+						return;
+					}
+
+					PrivateChatRequest privateChatRequest = new PrivateChatRequest();
+					privateChatRequest.setContext(message.getText());
+					privateChatRequest.setTargetPlayerId(playerId);
+
+					Request request = Request.valueOf(ModuleId.CHAT, ChatCmd.PRIVATE_CHAT,
+							privateChatRequest.getBytes());
+					client.sendRequest(request);
+				}
+			} catch (Exception e1) {
+				e1.printStackTrace();
+				tips.setText("can not connect to server");
+			}
+			break;
+
+		default:
+			break;
 		}
+	}
+
+	@Override
+	protected void processWindowEvent(WindowEvent e) {
+		super.processWindowEvent(e);
+		if (e.getID() == WindowEvent.WINDOW_CLOSING) {
+			client.shutdown();
+		}
+	}
+
+	public JTextArea getChatContext() {
+		return chatContext;
+	}
+
+	public JLabel getTips() {
+		return tips;
+	}
+
+	public PlayerResponse getPlayerResponse() {
+		return playerResponse;
+	}
+
+	public void setPlayerResponse(PlayerResponse playerResponse) {
+		this.playerResponse = playerResponse;
 	}
 
 }
